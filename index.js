@@ -69,14 +69,16 @@ server.post("/api/login", (req, res) => {
         req.session.user = user;
         res.status(200).json({ Logged_In: `welcome ${user.username}` });
       } else {
-        res.status(404).json({ err: "Invalid Username or Password you shall not pass!" });
+        res
+          .status(404)
+          .json({ err: "Invalid Username or Password you shall not pass!" });
       }
     })
     .catch(serverError(res));
 });
 
-function protect(req, res, next){
-  if(req.session && req.session.user){
+function protect(req, res, next) {
+  if (req.session && req.session.user) {
     next();
   } else {
     res.status(401).json({ message: "Not Authenticated you shall not pass!" });
@@ -95,17 +97,36 @@ server.get("/api/users", protect, (req, res) => {
 });
 
 server.get("/api/logout", (req, res) => {
-  if(req.session){
-    req.session.destroy(err=>{
-      if(err){
-        res.status(500).send('did not log out');
-      }else{
-        res.status(200).json('bye');
+  if (req.session) {
+    req.session.destroy(err => {
+      if (err) {
+        res.status(500).send("did not log out");
+      } else {
+        res.status(200).json("bye");
       }
     });
-  }else {
-    res.json({message: 'logged out already'});
+  } else {
+    res.json({ message: "logged out already" });
   }
+});
+
+// stretch global middleware
+function restricted(req, res, next) {
+  db("users")
+    .where({ username: `${req.session.user.username}` })
+    .then(user=>{
+      if(user.length > 0){
+        console.log({ username: `${user[0].username}` });
+        next();
+      }else{
+        res.status(401).json({ message: "Incorrect user you shall not pass!" });
+      }
+    })
+    .catch(serverError(res));
+}
+
+server.get("/api/restricted/test", restricted, (req, res) => {
+  res.json('protected function works');
 });
 
 const port = 2345;
